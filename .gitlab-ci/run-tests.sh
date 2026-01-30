@@ -5,6 +5,7 @@ set +e
 
 srcdir=$( pwd )
 builddir=$1
+MESON_TEST_TIMEOUT_MULTIPLIER=${MESON_TEST_TIMEOUT_MULTIPLIER:-1}
 
 # Ignore memory leaks lower in dependencies
 export LSAN_OPTIONS=suppressions=$srcdir/lsan.supp:print_suppressions=0:symbolize=1
