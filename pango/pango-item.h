@@ -118,7 +118,7 @@ struct _PangoItem
 #define PANGO_TYPE_ITEM (pango_item_get_type ())
 
 PANGO_AVAILABLE_IN_ALL
-GType                   pango_item_get_type          (void) G_GNUC_CONST;
+GType                   pango_item_get_type          (void);
 
 PANGO_AVAILABLE_IN_ALL
 PangoItem *             pango_item_new               (void);
@@ -161,6 +161,18 @@ GList *                 pango_itemize_with_base_dir  (PangoContext      *context
                                                       int                length,
                                                       PangoAttrList     *attrs,
                                                       PangoAttrIterator *cached_iter);
+
+PANGO_AVAILABLE_IN_1_60
+GList *                 pango_itemize_with_base_dir_and_embedding_levels
+                                                     (PangoContext      *context,
+                                                      PangoDirection     base_dir,
+                                                      const char        *text,
+                                                      int                start_index,
+                                                      int                length,
+                                                      PangoAttrList     *attrs,
+                                                      PangoAttrIterator *cached_iter,
+                                                      const guint8      *embedding_levels,
+                                                      int                n_embedding_levels);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PangoItem, pango_item_free)
 

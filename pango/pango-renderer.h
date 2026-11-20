@@ -201,7 +201,7 @@ struct _PangoRendererClass
 };
 
 PANGO_AVAILABLE_IN_1_8
-GType pango_renderer_get_type            (void) G_GNUC_CONST;
+GType pango_renderer_get_type            (void);
 
 PANGO_AVAILABLE_IN_1_8
 void pango_renderer_draw_layout          (PangoRenderer    *renderer,
@@ -313,9 +313,9 @@ PangoLayoutLine   *pango_renderer_get_layout_line (PangoRenderer     *renderer);
 typedef enum
 {
   PANGO_RENDER_COMPONENT_NONE          = 0,
-  PANGO_RENDER_COMPONENT_PLAIN_GLYPH   = 1 << 1,
-  PANGO_RENDER_COMPONENT_COLOR_GLYPH   = 1 << 2,
-  PANGO_RENDER_COMPONENT_BACKGROUND    = 1 << 3,
+  PANGO_RENDER_COMPONENT_PLAIN_GLYPH   = 1 << 0,
+  PANGO_RENDER_COMPONENT_COLOR_GLYPH   = 1 << 1,
+  PANGO_RENDER_COMPONENT_BACKGROUND    = 1 << 2,
   PANGO_RENDER_COMPONENT_UNDERLINE     = 1 << 3,
   PANGO_RENDER_COMPONENT_STRIKETHROUGH = 1 << 4,
   PANGO_RENDER_COMPONENT_OVERLINE      = 1 << 5,

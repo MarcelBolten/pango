@@ -1,5 +1,5 @@
 project('pango', 'c', 'cpp',
-        version: '1.58.2',
+        version: '1.59.0',
         license: 'LGPLv2.1+',
         default_options: [
           'buildtype=debugoptimized',
@@ -15,6 +15,8 @@ add_project_arguments([
   ],
   language: 'c'
 )
+
+add_project_arguments('-DG_DISABLE_CLEANUP', language: ['c', 'cpp'])
 
 pango_prefix = get_option('prefix')
 pango_libdir = join_paths(pango_prefix, get_option('libdir'))
@@ -148,6 +150,7 @@ elif cc.get_id() == 'gcc' or cc.get_id() == 'clang'
     '-Werror=empty-body',
     '-Werror=write-strings',
     '-Werror=unused-but-set-variable',
+    '-Wno-error=unused-but-set-global',
     '-Wundef', # FIXME: https://bugzilla.gnome.org/show_bug.cgi?id=792481
   ]
 
@@ -587,7 +590,8 @@ summary('Cairo', cairo_dep.found(), section: 'Features')
 summary('Thai', thai_dep.found(), section: 'Features')
 summary('Sysprof', libsysprof_capture_dep.found(), section: 'Features')
 
-summary('Compiler', cc.get_id(), section: 'Toolchain')
+summary('C Compiler', cc.get_id(), section: 'Toolchain')
+summary('C++ Compiler', cpp.get_id(), section: 'Toolchain')
 summary('Linker', cc.get_linker_id(), section: 'Toolchain')
 
 summary('Debugging', get_option('debug'), section: 'Build')
