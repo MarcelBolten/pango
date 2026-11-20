@@ -171,8 +171,10 @@ struct _PangoFcFontMapPrivate
   FcConfig *config;
   FcFontSet *fonts;
 
-  /* fontconfig worker thread */
-  GThread *fc_thread;
+  /* All fontconfig worker threads created during the font map's lifetime.
+  * Threads are terminated in fini() and joined in finalize().
+  */
+  GList *fc_threads;
 
   GAsyncQueue *queue;
 };
@@ -1529,17 +1531,20 @@ G_DEFINE_ABSTRACT_TYPE_WITH_CODE (PangoFcFontMap, pango_fc_font_map, PANGO_TYPE_
 static void
 start_fontconfig_thread (PangoFcFontMap *fcfontmap)
 {
+  PangoFcFontMapPrivate *priv = fcfontmap->priv;
+  GThread *thread = NULL;
+
   g_mutex_lock (&fc_init_mutex);
 
-  fcfontmap->priv->fc_thread = g_thread_new ("[pango] fontconfig",
-                                             fc_thread_func,
-                                             g_async_queue_ref (fcfontmap->priv->queue));
+  /* Store thread handle to join in finalize function */
+  thread = g_thread_new ("[pango] fontconfig", fc_thread_func, g_async_queue_ref (priv->queue));
+  priv->fc_threads = g_list_prepend (priv->fc_threads, thread);
 
   if (fc_initialized == DEFAULT_CONFIG_NOT_INITIALIZED)
     {
       fc_initialized = DEFAULT_CONFIG_INITIALIZING;
 
-      g_async_queue_push (fcfontmap->priv->queue, thread_data_new (FC_INIT, NULL));
+      g_async_queue_push (priv->queue, thread_data_new (FC_INIT, NULL));
     }
 
   g_mutex_unlock (&fc_init_mutex);
@@ -1596,8 +1601,6 @@ pango_fc_font_map_init (PangoFcFontMap *fcfontmap)
 						     NULL);
   priv->dpi = -1;
 
-  priv->fc_thread = NULL;
-
   priv->queue = g_async_queue_new ();
 
   start_fontconfig_thread (fcfontmap);
@@ -1636,13 +1639,6 @@ pango_fc_font_map_fini (PangoFcFontMap *fcfontmap)
   priv->families = NULL;
 
   g_async_queue_push (fcfontmap->priv->queue, thread_data_new (FC_END, NULL));
-
-  if (fcfontmap->priv->fc_thread)
-    {
-      if (g_thread_self() != fcfontmap->priv->fc_thread)
-        g_thread_join (fcfontmap->priv->fc_thread);
-      fcfontmap->priv->fc_thread = NULL;
-    }
 
   g_async_queue_unref (priv->queue);
   priv->queue = NULL;
@@ -1752,14 +1748,32 @@ static void
 pango_fc_font_map_finalize (GObject *object)
 {
   PangoFcFontMap *fcfontmap = PANGO_FC_FONT_MAP (object);
+  PangoFcFontMapPrivate *priv = fcfontmap->priv;
 
   pango_fc_font_map_shutdown (fcfontmap);
+
+  for (GList *l = priv->fc_threads; l != NULL; l = l->next)
+    {
+      GThread *thread = l->data;
+
+      /* FC_MATCH and FC_SORT operations hold a reference to the font map
+       * through ThreadData. Releasing the last reference can therefore
+       * trigger finalization from the worker thread itself.
+       */
+      if (g_thread_self () == thread)
+        g_thread_unref (thread);
+      else
+        g_thread_join (thread);
+    }
+
+  g_list_free (priv->fc_threads);
+  priv->fc_threads = NULL;
 
   if (fcfontmap->substitute_destroy)
     fcfontmap->substitute_destroy (fcfontmap->substitute_data);
 
-  if (fcfontmap->priv->config)
-    FcConfigDestroy (fcfontmap->priv->config);
+  if (priv->config)
+    FcConfigDestroy (priv->config);
 
   G_OBJECT_CLASS (pango_fc_font_map_parent_class)->finalize (object);
 }
@@ -1916,7 +1930,7 @@ compare_font_family_names (const void *a, const void *b)
 {
   const PangoFcFamily *family_a = *(const PangoFcFamily **)a;
   const PangoFcFamily *family_b = *(const PangoFcFamily **)b;
-  
+
   return g_strcmp0 (family_a->family_name, family_b->family_name);
 }
 
